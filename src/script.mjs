@@ -1,100 +1,136 @@
 /**
- * SGNL Job Template
+ * Google Revoke Session Action
  *
- * This template provides a starting point for implementing SGNL jobs.
- * Replace this implementation with your specific business logic.
+ * Signs out a Google Workspace user from all web and device sessions using
+ * the Google Admin SDK Directory API.
  */
+
+/**
+ * Helper function to revoke user sessions
+ * @private
+ */
+async function revokeUserSessions(userKey, googleDomain, accessToken) {
+  // Encode the userKey to handle special characters in email addresses
+  const encodedUserKey = encodeURIComponent(userKey);
+  const url = new URL(
+    `/admin/directory/v1/users/${encodedUserKey}/signOut`,
+    'https://admin.googleapis.com'
+  );
+
+  const response = await fetch(url.toString(), {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
+  });
+
+  return response;
+}
+
 
 export default {
   /**
-   * Main execution handler - implement your job logic here
+   * Main execution handler - revokes all sessions for a Google Workspace user
    * @param {Object} params - Job input parameters
+   * @param {string} params.userKey - User's primary email, alias, or unique ID
+   * @param {string} params.googleDomain - The Google Workspace domain
    * @param {Object} context - Execution context with env, secrets, outputs
    * @returns {Object} Job results
    */
   invoke: async (params, context) => {
-    console.log('Starting job execution');
-    console.log(`Processing target: ${params.target}`);
-    console.log(`Action: ${params.action}`);
+    const { userKey, googleDomain } = params;
 
-    // TODO: Replace with your implementation
-    const { target, action, options = [], dry_run = false } = params;
+    console.log(`Starting Google session revocation for user ${userKey}`);
 
-    if (dry_run) {
-      console.log('DRY RUN: No changes will be made');
+    // Validate inputs
+    if (!userKey || typeof userKey !== 'string') {
+      throw new Error('Invalid or missing userKey parameter');
+    }
+    if (!googleDomain || typeof googleDomain !== 'string') {
+      throw new Error('Invalid or missing googleDomain parameter');
     }
 
-    // Access environment variables
-    const environment = context.env.ENVIRONMENT || 'development';
-    console.log(`Running in ${environment} environment`);
-
-    // Access secrets securely (example)
-    if (context.secrets.API_KEY) {
-      console.log(`Using API key ending in ...${context.secrets.API_KEY.slice(-4)}`);
+    // Validate Google access token is present
+    if (!context.secrets?.GOOGLE_ACCESS_TOKEN) {
+      throw new Error('Missing required secret: GOOGLE_ACCESS_TOKEN');
     }
 
-    // Use outputs from previous jobs in workflow
-    if (context.outputs && Object.keys(context.outputs).length > 0) {
-      console.log(`Available outputs from ${Object.keys(context.outputs).length} previous jobs`);
-      console.log(`Previous job outputs: ${Object.keys(context.outputs).join(', ')}`);
+    // Make the API request to sign out the user
+    const response = await revokeUserSessions(
+      userKey,
+      googleDomain,
+      context.secrets.GOOGLE_ACCESS_TOKEN
+    );
+
+    // Handle the response
+    if (response.ok) {
+      // 204 No Content is the expected success response
+      console.log(`Successfully revoked sessions for user ${userKey}`);
+
+      return {
+        userKey: userKey,
+        sessionRevoked: true,
+        googleDomain: googleDomain,
+        revokedAt: new Date().toISOString()
+      };
     }
 
-    // TODO: Implement your business logic here
-    console.log(`Performing ${action} on ${target}...`);
+    // Handle error responses
+    const statusCode = response.status;
+    let errorMessage = `Failed to revoke sessions: HTTP ${statusCode}`;
 
-    if (options.length > 0) {
-      console.log(`Processing ${options.length} options: ${options.join(', ')}`);
+    try {
+      const errorBody = await response.json();
+      if (errorBody.error?.message) {
+        errorMessage = `Failed to revoke sessions: ${errorBody.error.message}`;
+      }
+      console.error('Google API error response:', errorBody);
+    } catch {
+      // Response might not be JSON
+      console.error('Failed to parse error response');
     }
 
-    console.log(`Successfully completed ${action} on ${target}`);
-
-    // Return structured results
-    return {
-      status: dry_run ? 'dry_run_completed' : 'success',
-      target: target,
-      action: action,
-      options_processed: options.length,
-      environment: environment,
-      processed_at: new Date().toISOString()
-      // Job completed successfully
-    };
+    // Throw error with status code for proper error handling
+    const error = new Error(errorMessage);
+    error.statusCode = statusCode;
+    throw error;
   },
 
   /**
-   * Error recovery handler - implement error handling logic
+   * Error recovery handler - framework handles retries by default
    * @param {Object} params - Original params plus error information
    * @param {Object} context - Execution context
    * @returns {Object} Recovery results
    */
   error: async (params, _context) => {
-    const { error, target } = params;
-    console.error(`Job encountered error while processing ${target}: ${error.message}`);
+    const { error, userKey } = params;
+    console.error(`Session revocation failed for user ${userKey}: ${error.message}`);
 
-    // TODO: Implement your error recovery logic
-    // Example: Check if error is retryable and attempt recovery
-
-    // For now, just throw the error - implement your logic here
-    throw new Error(`Unable to recover from error: ${error.message}`);
+    // Framework handles retries for transient errors (429, 502, 503, 504)
+    // Just re-throw the error to let the framework handle it
+    throw error;
   },
 
   /**
-   * Graceful shutdown handler - implement cleanup logic
+   * Graceful shutdown handler - cleanup when job is halted
    * @param {Object} params - Original params plus halt reason
    * @param {Object} context - Execution context
    * @returns {Object} Cleanup results
    */
   halt: async (params, _context) => {
-    const { reason, target } = params;
-    console.log(`Job is being halted (${reason}) while processing ${target}`);
+    const { reason, userKey } = params;
+    console.log(`Session revocation job is being halted (${reason}) for user ${userKey}`);
 
-    // TODO: Implement your cleanup logic
-    // Example: Save partial results, close connections, etc.
+    // No cleanup needed for this simple operation
+    // The POST request either completed or didn't
 
     return {
-      status: 'halted',
-      target: target || 'unknown',
+      userKey: userKey || 'unknown',
       reason: reason,
-      halted_at: new Date().toISOString()
+      haltedAt: new Date().toISOString(),
+      cleanupCompleted: true
     };
   }
 };

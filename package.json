@@ -1,7 +1,7 @@
 {
-  "name": "@sgnl/job-template",
+  "name": "@sgnl-actions/google-revoke-session",
   "version": "1.0.0",
-  "description": "Template for SGNL JavaScript jobs",
+  "description": "Revoke all Google Workspace user sessions",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
