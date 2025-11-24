@@ -6,7 +6,7 @@ describe('Google Revoke Session Script', () => {
       ENVIRONMENT: 'test'
     },
     secrets: {
-      GOOGLE_ACCESS_TOKEN: 'test-google-token-123456'
+      BEARER_AUTH_TOKEN: 'test-google-token-123456'
     },
     outputs: {}
   };
@@ -80,7 +80,7 @@ describe('Google Revoke Session Script', () => {
         .rejects.toThrow('Invalid or missing googleDomain parameter');
     });
 
-    test('should throw error for missing GOOGLE_ACCESS_TOKEN', async () => {
+    test('should throw error for missing BEARER_AUTH_TOKEN', async () => {
       const params = {
         userKey: 'user@example.com',
         googleDomain: 'example.com'
@@ -92,7 +92,7 @@ describe('Google Revoke Session Script', () => {
       };
 
       await expect(script.invoke(params, contextWithoutToken))
-        .rejects.toThrow('Missing required secret: GOOGLE_ACCESS_TOKEN');
+        .rejects.toThrow('Missing required secret: BEARER_AUTH_TOKEN');
     });
 
     test('should handle API error with error message', async () => {

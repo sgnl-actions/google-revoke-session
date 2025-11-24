@@ -36,7 +36,37 @@ export default {
    * @param {Object} params - Job input parameters
    * @param {string} params.userKey - User's primary email, alias, or unique ID
    * @param {string} params.googleDomain - The Google Workspace domain
-   * @param {Object} context - Execution context with env, secrets, outputs
+   *
+   * @param {Object} context - Execution context with secrets and environment
+   *
+   * The configured auth type will determine which of the following environment variables and secrets are available
+   * @param {string} context.secrets.BEARER_AUTH_TOKEN
+   *
+   * @param {string} context.secrets.BASIC_USERNAME
+   * @param {string} context.secrets.BASIC_PASSWORD
+   *
+   * @param {string} context.secrets.OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET
+   * @param {string} context.environment.OAUTH2_CLIENT_CREDENTIALS_AUDIENCE
+   * @param {string} context.environment.OAUTH2_CLIENT_CREDENTIALS_AUTH_STYLE
+   * @param {string} context.environment.OAUTH2_CLIENT_CREDENTIALS_CLIENT_ID
+   * @param {string} context.environment.OAUTH2_CLIENT_CREDENTIALS_SCOPE
+   * @param {string} context.environment.OAUTH2_CLIENT_CREDENTIALS_TOKEN_URL
+   *
+   * @param {string} context.secrets.OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN
+   * @param {string} context.secrets.OAUTH2_AUTHORIZATION_CODE_AUTHORIZATION_CODE
+   * @param {string} context.secrets.OAUTH2_AUTHORIZATION_CODE_CLIENT_SECRET
+   * @param {string} context.secrets.OAUTH2_AUTHORIZATION_CODE_REFRESH_TOKEN
+   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_AUTH_STYLE
+   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_AUTH_URL
+   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_CLIENT_ID
+   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_LAST_TOKEN_ROTATION_TIMESTAMP
+   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_REDIRECT_URI
+   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_SCOPE
+   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_TOKEN_LIFETIME_FREQUENCY
+   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_TOKEN_ROTATION_FREQUENCY
+   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_TOKEN_ROTATION_INTERVAL
+   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_TOKEN_URL
+   *
    * @returns {Object} Job results
    */
   invoke: async (params, context) => {
@@ -53,15 +83,15 @@ export default {
     }
 
     // Validate Google access token is present
-    if (!context.secrets?.GOOGLE_ACCESS_TOKEN) {
-      throw new Error('Missing required secret: GOOGLE_ACCESS_TOKEN');
+    if (!context.secrets?.BEARER_AUTH_TOKEN) {
+      throw new Error('Missing required secret: BEARER_AUTH_TOKEN');
     }
 
     // Make the API request to sign out the user
     const response = await revokeUserSessions(
       userKey,
       googleDomain,
-      context.secrets.GOOGLE_ACCESS_TOKEN
+      context.secrets.BEARER_AUTH_TOKEN
     );
 
     // Handle the response
