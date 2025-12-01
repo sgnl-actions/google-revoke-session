@@ -5,22 +5,21 @@
  * the Google Admin SDK Directory API.
  */
 
+import { getAuthorizationHeader, getBaseUrl } from '@sgnl-actions/utils';
+
 /**
  * Helper function to revoke user sessions
  * @private
  */
-async function revokeUserSessions(userKey, googleDomain, accessToken) {
+async function revokeUserSessions(userKey, baseUrl, authHeader) {
   // Encode the userKey to handle special characters in email addresses
   const encodedUserKey = encodeURIComponent(userKey);
-  const url = new URL(
-    `/admin/directory/v1/users/${encodedUserKey}/signOut`,
-    'https://admin.googleapis.com'
-  );
+  const url = `${baseUrl}/admin/directory/v1/users/${encodedUserKey}/signOut`;
 
-  const response = await fetch(url.toString(), {
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
+      'Authorization': authHeader,
       'Accept': 'application/json',
       'Content-Type': 'application/json'
     }
@@ -35,9 +34,10 @@ export default {
    * Main execution handler - revokes all sessions for a Google Workspace user
    * @param {Object} params - Job input parameters
    * @param {string} params.userKey - User's primary email, alias, or unique ID
-   * @param {string} params.googleDomain - The Google Workspace domain
+   * @param {string} params.address - Full URL to Google Admin SDK API (defaults to https://admin.googleapis.com)
    *
    * @param {Object} context - Execution context with secrets and environment
+   * @param {string} context.environment.ADDRESS - Default Google Admin SDK API base URL
    *
    * The configured auth type will determine which of the following environment variables and secrets are available
    * @param {string} context.secrets.BEARER_AUTH_TOKEN
@@ -53,24 +53,11 @@ export default {
    * @param {string} context.environment.OAUTH2_CLIENT_CREDENTIALS_TOKEN_URL
    *
    * @param {string} context.secrets.OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN
-   * @param {string} context.secrets.OAUTH2_AUTHORIZATION_CODE_AUTHORIZATION_CODE
-   * @param {string} context.secrets.OAUTH2_AUTHORIZATION_CODE_CLIENT_SECRET
-   * @param {string} context.secrets.OAUTH2_AUTHORIZATION_CODE_REFRESH_TOKEN
-   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_AUTH_STYLE
-   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_AUTH_URL
-   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_CLIENT_ID
-   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_LAST_TOKEN_ROTATION_TIMESTAMP
-   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_REDIRECT_URI
-   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_SCOPE
-   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_TOKEN_LIFETIME_FREQUENCY
-   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_TOKEN_ROTATION_FREQUENCY
-   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_TOKEN_ROTATION_INTERVAL
-   * @param {string} context.environment.OAUTH2_AUTHORIZATION_CODE_TOKEN_URL
    *
    * @returns {Object} Job results
    */
   invoke: async (params, context) => {
-    const { userKey, googleDomain } = params;
+    const { userKey } = params;
 
     console.log(`Starting Google session revocation for user ${userKey}`);
 
@@ -78,20 +65,23 @@ export default {
     if (!userKey || typeof userKey !== 'string') {
       throw new Error('Invalid or missing userKey parameter');
     }
-    if (!googleDomain || typeof googleDomain !== 'string') {
-      throw new Error('Invalid or missing googleDomain parameter');
+
+    // Get base URL using utils (with default for Google Admin SDK API)
+    let baseUrl;
+    try {
+      baseUrl = getBaseUrl(params, context);
+    } catch (error) {
+      baseUrl = 'https://admin.googleapis.com';
     }
 
-    // Validate Google access token is present
-    if (!context.secrets?.BEARER_AUTH_TOKEN) {
-      throw new Error('Missing required secret: BEARER_AUTH_TOKEN');
-    }
+    // Get authorization header using utils
+    const authHeader = await getAuthorizationHeader(context);
 
     // Make the API request to sign out the user
     const response = await revokeUserSessions(
       userKey,
-      googleDomain,
-      context.secrets.BEARER_AUTH_TOKEN
+      baseUrl,
+      authHeader
     );
 
     // Handle the response
@@ -102,7 +92,6 @@ export default {
       return {
         userKey: userKey,
         sessionRevoked: true,
-        googleDomain: googleDomain,
         revokedAt: new Date().toISOString()
       };
     }
@@ -130,8 +119,10 @@ export default {
 
   /**
    * Error recovery handler - framework handles retries by default
+   *
    * @param {Object} params - Original params plus error information
    * @param {Object} context - Execution context
+   *
    * @returns {Object} Recovery results
    */
   error: async (params, _context) => {
@@ -145,8 +136,10 @@ export default {
 
   /**
    * Graceful shutdown handler - cleanup when job is halted
+   *
    * @param {Object} params - Original params plus halt reason
    * @param {Object} context - Execution context
+   *
    * @returns {Object} Cleanup results
    */
   halt: async (params, _context) => {
