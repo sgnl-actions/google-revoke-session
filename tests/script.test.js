@@ -3,7 +3,7 @@ import script from '../src/script.mjs';
 describe('Google Revoke Session Script', () => {
   const mockContext = {
     environment: {
-      ENVIRONMENT: 'test'
+      ADDRESS: 'https://admin.googleapis.com'
     },
     secrets: {
       OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN: 'test-google-access-token'
