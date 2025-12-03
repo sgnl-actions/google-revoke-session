@@ -66,9 +66,6 @@ The configured auth type will determine which secrets are needed:
   "script_inputs": {
     "userKey": "user@example.com",
     "address": "https://admin.googleapis.com"
-  },
-  "environment": {
-    "LOG_LEVEL": "info"
   }
 }
 ```
@@ -206,15 +203,6 @@ This action uses the following Google Admin SDK API endpoint:
 4. **User Not Found (404)**
    - Verify the userKey is correct
    - Check that the user exists in your Google Workspace domain
-
-## Version History
-
-### v1.0.0
-- Initial release
-- Support for session revocation via Google Admin SDK API
-- Multiple authentication methods (Bearer, Basic, OAuth2 Client Credentials, OAuth2 Authorization Code)
-- Integration with @sgnl-actions/utils package
-- Comprehensive error handling
 
 ## License
 
