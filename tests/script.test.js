@@ -2,103 +2,127 @@ import script from '../src/script.mjs';
 
 describe('Google Revoke Session Script', () => {
   const mockContext = {
-    env: {
-      ENVIRONMENT: 'test'
+    environment: {
+      ADDRESS: 'https://admin.googleapis.com'
     },
     secrets: {
-      GOOGLE_ACCESS_TOKEN: 'test-google-token-123456'
+      OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN: 'test-google-access-token'
     },
     outputs: {}
   };
 
   let originalFetch;
-  let originalURL;
 
   beforeAll(() => {
-    // Save original global functions
+    // Save original fetch
     originalFetch = global.fetch;
-    originalURL = global.URL;
   });
 
   beforeEach(() => {
+    // Mock console to avoid noise in tests
+    global.console.log = () => {};
+    global.console.error = () => {};
+
     // Mock fetch
     global.fetch = () => Promise.resolve({
       ok: true,
       status: 204
     });
-
-    // Mock URL constructor
-    global.URL = class {
-      constructor(path, base) {
-        this.toString = () => `${base}${path}`;
-      }
-    };
-  });
-
-  afterEach(() => {
-    // Restore console methods
-    if (console.log.mockRestore) console.log.mockRestore();
-    if (console.error.mockRestore) console.error.mockRestore();
   });
 
   afterAll(() => {
-    // Restore original global functions
+    // Restore original fetch
     global.fetch = originalFetch;
-    global.URL = originalURL;
   });
 
   describe('invoke handler', () => {
     test('should successfully revoke user sessions', async () => {
       const params = {
-        userKey: 'user@example.com',
-        googleDomain: 'example.com'
+        userKey: 'user@example.com'
       };
 
       const result = await script.invoke(params, mockContext);
 
       expect(result.userKey).toBe('user@example.com');
       expect(result.sessionRevoked).toBe(true);
-      expect(result.googleDomain).toBe('example.com');
       expect(result.revokedAt).toBeDefined();
     });
 
     test('should throw error for missing userKey', async () => {
-      const params = {
-        googleDomain: 'example.com'
-      };
+      const params = {};
 
       await expect(script.invoke(params, mockContext))
         .rejects.toThrow('Invalid or missing userKey parameter');
     });
 
-    test('should throw error for missing googleDomain', async () => {
+    test('should use default Google Admin SDK URL when address not provided', async () => {
       const params = {
         userKey: 'user@example.com'
       };
 
-      await expect(script.invoke(params, mockContext))
-        .rejects.toThrow('Invalid or missing googleDomain parameter');
+      let capturedUrl;
+      global.fetch = async (url, options) => {
+        capturedUrl = url;
+        return {
+          ok: true,
+          status: 204
+        };
+      };
+
+      await script.invoke(params, mockContext);
+
+      expect(capturedUrl).toBe('https://admin.googleapis.com/admin/directory/v1/users/user%40example.com/signOut');
     });
 
-    test('should throw error for missing GOOGLE_ACCESS_TOKEN', async () => {
+    test('should use address parameter when provided', async () => {
       const params = {
         userKey: 'user@example.com',
-        googleDomain: 'example.com'
+        address: 'https://custom.googleapis.com'
       };
 
-      const contextWithoutToken = {
+      let capturedUrl;
+      global.fetch = async (url, options) => {
+        capturedUrl = url;
+        return {
+          ok: true,
+          status: 204
+        };
+      };
+
+      await script.invoke(params, mockContext);
+
+      expect(capturedUrl).toBe('https://custom.googleapis.com/admin/directory/v1/users/user%40example.com/signOut');
+    });
+
+    test('should use ADDRESS environment variable when address param not provided', async () => {
+      const params = {
+        userKey: 'user@example.com'
+      };
+
+      const contextWithEnvAddress = {
         ...mockContext,
-        secrets: {}
+        environment: {
+          ADDRESS: 'https://env.googleapis.com'
+        }
       };
 
-      await expect(script.invoke(params, contextWithoutToken))
-        .rejects.toThrow('Missing required secret: GOOGLE_ACCESS_TOKEN');
+      let capturedUrl;
+      global.fetch = async (url, options) => {
+        capturedUrl = url;
+        return {
+          ok: true,
+          status: 204
+        };
+      };
+
+      await script.invoke(params, contextWithEnvAddress);
+
+      expect(capturedUrl).toBe('https://env.googleapis.com/admin/directory/v1/users/user%40example.com/signOut');
     });
 
     test('should handle API error with error message', async () => {
       const params = {
-        userKey: 'user@example.com',
-        googleDomain: 'example.com'
+        userKey: 'user@example.com'
       };
 
       global.fetch = () => Promise.resolve({
@@ -120,8 +144,7 @@ describe('Google Revoke Session Script', () => {
 
     test('should handle API error without JSON body', async () => {
       const params = {
-        userKey: 'user@example.com',
-        googleDomain: 'example.com'
+        userKey: 'user@example.com'
       };
 
       global.fetch = () => Promise.resolve({

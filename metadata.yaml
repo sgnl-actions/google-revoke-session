@@ -11,17 +11,22 @@ inputs:
       min: 1
       max: 200
 
-  googleDomain:
+  address:
     type: text
-    description: The Google Workspace domain (e.g., example.com)
-    required: true
+    description: Google Admin SDK API base URL (defaults to https://admin.googleapis.com if not provided)
+    required: false
     validation:
       min: 1
-      max: 100
+      max: 255
 
 # Required secrets (configured at deployment time)
+# The configured auth type will determine which secrets are available
 secrets:
-  - GOOGLE_ACCESS_TOKEN
+  - BEARER_AUTH_TOKEN  # For Bearer authentication
+  - BASIC_USERNAME  # For Basic authentication
+  - BASIC_PASSWORD  # For Basic authentication
+  - OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET  # For OAuth2 Client Credentials
+  - OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN  # For OAuth2 Authorization Code
 
 # Expected output structure
 outputs:
@@ -32,10 +37,6 @@ outputs:
   sessionRevoked:
     type: boolean
     description: Whether the session was successfully revoked
-
-  googleDomain:
-    type: text
-    description: The Google Workspace domain
 
   revokedAt:
     type: datetime
