@@ -5,7 +5,7 @@
  * the Google Admin SDK Directory API.
  */
 
-import { getAuthorizationHeader, getBaseUrl } from '@sgnl-actions/utils';
+import { getAuthorizationHeader, getBaseURL, resolveJSONPathTemplates} from '@sgnl-actions/utils';
 
 /**
  * Helper function to revoke user sessions
@@ -57,7 +57,15 @@ export default {
    * @returns {Object} Job results
    */
   invoke: async (params, context) => {
-    const { userKey } = params;
+    const jobContext = context.data || {};
+
+    // Resolve JSONPath templates in params
+    const { result: resolvedParams, errors } = resolveJSONPathTemplates(params, jobContext);
+    if (errors.length > 0) {
+     console.warn('Template resolution errors:', errors);
+    }
+
+    const { userKey } = resolvedParams;
 
     console.log(`Starting Google session revocation for user ${userKey}`);
 
@@ -69,7 +77,7 @@ export default {
     // Get base URL using utils (with default for Google Admin SDK API)
     let baseUrl;
     try {
-      baseUrl = getBaseUrl(params, context);
+      baseUrl = getBaseURL(resolvedParams, context);
     } catch (error) {
       baseUrl = 'https://admin.googleapis.com';
     }
