@@ -1,4 +1,5 @@
 import script from '../src/script.mjs';
+import { SGNL_USER_AGENT } from '@sgnl-actions/utils';
 
 describe('Google Revoke Session Script', () => {
   const mockContext = {
@@ -61,8 +62,10 @@ describe('Google Revoke Session Script', () => {
       };
 
       let capturedUrl;
+      let capturedOptions;
       global.fetch = async (url, options) => {
         capturedUrl = url;
+        capturedOptions = options;
         return {
           ok: true,
           status: 204
@@ -72,6 +75,7 @@ describe('Google Revoke Session Script', () => {
       await script.invoke(params, mockContext);
 
       expect(capturedUrl).toBe('https://admin.googleapis.com/admin/directory/v1/users/user%40example.com/signOut');
+      expect(capturedOptions.headers['User-Agent']).toBe(SGNL_USER_AGENT);
     });
 
     test('should use address parameter when provided', async () => {
@@ -81,8 +85,10 @@ describe('Google Revoke Session Script', () => {
       };
 
       let capturedUrl;
+      let capturedOptions;
       global.fetch = async (url, options) => {
         capturedUrl = url;
+        capturedOptions = options;
         return {
           ok: true,
           status: 204
@@ -92,6 +98,7 @@ describe('Google Revoke Session Script', () => {
       await script.invoke(params, mockContext);
 
       expect(capturedUrl).toBe('https://custom.googleapis.com/admin/directory/v1/users/user%40example.com/signOut');
+      expect(capturedOptions.headers['User-Agent']).toBe(SGNL_USER_AGENT);
     });
 
     test('should use ADDRESS environment variable when address param not provided', async () => {
@@ -107,8 +114,10 @@ describe('Google Revoke Session Script', () => {
       };
 
       let capturedUrl;
+      let capturedOptions;
       global.fetch = async (url, options) => {
         capturedUrl = url;
+        capturedOptions = options;
         return {
           ok: true,
           status: 204
@@ -118,6 +127,7 @@ describe('Google Revoke Session Script', () => {
       await script.invoke(params, contextWithEnvAddress);
 
       expect(capturedUrl).toBe('https://env.googleapis.com/admin/directory/v1/users/user%40example.com/signOut');
+      expect(capturedOptions.headers['User-Agent']).toBe(SGNL_USER_AGENT);
     });
 
     test('should handle API error with error message', async () => {
