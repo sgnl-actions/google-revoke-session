@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/sgnl-actions/schemas/main/metadata.schema.json
 name: google-revoke-session
 description: Sign out a Google Workspace user from all web and device sessions
 
