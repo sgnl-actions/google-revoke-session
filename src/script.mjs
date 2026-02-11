@@ -5,24 +5,20 @@
  * the Google Admin SDK Directory API.
  */
 
-import { getAuthorizationHeader, getBaseURL} from '@sgnl-actions/utils';
+import { createAuthHeaders, getBaseURL} from '@sgnl-actions/utils';
 
 /**
  * Helper function to revoke user sessions
  * @private
  */
-async function revokeUserSessions(userKey, baseUrl, authHeader) {
+async function revokeUserSessions(userKey, baseUrl, headers) {
   // Encode the userKey to handle special characters in email addresses
   const encodedUserKey = encodeURIComponent(userKey);
   const url = `${baseUrl}/admin/directory/v1/users/${encodedUserKey}/signOut`;
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Authorization': authHeader,
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    }
+    headers
   });
 
   return response;
@@ -75,13 +71,13 @@ export default {
     }
 
     // Get authorization header using utils
-    const authHeader = await getAuthorizationHeader(context);
+    const headers = await createAuthHeaders(context);
 
     // Make the API request to sign out the user
     const response = await revokeUserSessions(
       userKey,
       baseUrl,
-      authHeader
+      headers
     );
 
     // Handle the response

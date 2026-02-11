@@ -9,6 +9,11 @@
  */
 
 /**
+ * User-Agent header value for all SGNL CAEP Hub requests.
+ */
+const SGNL_USER_AGENT = 'SGNL-CAEP-Hub/2.0';
+
+/**
  * Get OAuth2 access token using client credentials flow
  * @param {Object} config - OAuth2 configuration
  * @param {string} config.tokenUrl - Token endpoint URL
@@ -39,7 +44,8 @@ async function getClientCredentialsToken(config) {
 
   const headers = {
     'Content-Type': 'application/x-www-form-urlencoded',
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'User-Agent': SGNL_USER_AGENT
   };
 
   if (authStyle === 'InParams') {
@@ -158,6 +164,21 @@ function getBaseURL(params, context) {
 }
 
 /**
+ * Create full headers object with Authorization and common headers
+ * @param {Object} context - Execution context with env and secrets
+ * @returns {Promise<Object>} Headers object with Authorization, Accept, Content-Type
+ */
+async function createAuthHeaders(context) {
+  const authHeader = await getAuthorizationHeader(context);
+  return {
+    'Authorization': authHeader,
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'User-Agent': SGNL_USER_AGENT
+  };
+}
+
+/**
  * Google Revoke Session Action
  *
  * Signs out a Google Workspace user from all web and device sessions using
@@ -169,18 +190,14 @@ function getBaseURL(params, context) {
  * Helper function to revoke user sessions
  * @private
  */
-async function revokeUserSessions(userKey, baseUrl, authHeader) {
+async function revokeUserSessions(userKey, baseUrl, headers) {
   // Encode the userKey to handle special characters in email addresses
   const encodedUserKey = encodeURIComponent(userKey);
   const url = `${baseUrl}/admin/directory/v1/users/${encodedUserKey}/signOut`;
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Authorization': authHeader,
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    }
+    headers
   });
 
   return response;
@@ -233,13 +250,13 @@ var script = {
     }
 
     // Get authorization header using utils
-    const authHeader = await getAuthorizationHeader(context);
+    const headers = await createAuthHeaders(context);
 
     // Make the API request to sign out the user
     const response = await revokeUserSessions(
       userKey,
       baseUrl,
-      authHeader
+      headers
     );
 
     // Handle the response
