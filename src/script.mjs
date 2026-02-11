@@ -5,7 +5,7 @@
  * the Google Admin SDK Directory API.
  */
 
-import { getAuthorizationHeader, getBaseURL} from '@sgnl-actions/utils';
+import { getAuthorizationHeader, getBaseURL } from '@sgnl-actions/utils';
 
 /**
  * Helper function to revoke user sessions
