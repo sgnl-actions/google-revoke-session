@@ -5,7 +5,7 @@
  * the Google Admin SDK Directory API.
  */
 
-import { createAuthHeaders, getBaseURL} from '@sgnl-actions/utils';
+import { createAuthHeaders, getBaseURL } from '@sgnl-actions/utils';
 
 /**
  * Helper function to revoke user sessions
@@ -66,7 +66,7 @@ export default {
     let baseUrl;
     try {
       baseUrl = getBaseURL(params, context);
-    } catch (error) {
+    } catch {
       baseUrl = 'https://admin.googleapis.com';
     }
 
