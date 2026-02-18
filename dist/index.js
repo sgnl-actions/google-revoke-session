@@ -245,7 +245,7 @@ var script = {
     let baseUrl;
     try {
       baseUrl = getBaseURL(params, context);
-    } catch (error) {
+    } catch {
       baseUrl = 'https://admin.googleapis.com';
     }
 
